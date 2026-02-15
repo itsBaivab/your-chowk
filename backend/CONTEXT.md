@@ -18,13 +18,13 @@
                │
                ▼
 ┌──────────────────────────────────────────────────────┐
-│        Baileys WhatsApp Client (bot/baileysClient.js) │
+│        Baileys WhatsApp Client (bot/baileysClient.ts) │
 │  • QR-based auth  • Auto-reconnect  • Msg listener   │
 └──────────────┬───────────────────────────────────────┘
                │ Delegates to handleMessage()
                ▼
 ┌──────────────────────────────────────────────────────┐
-│       Message Handler / Router (bot/messageHandler.js)│
+│       Message Handler / Router (bot/messageHandler.ts)│
 │  • Language detect → Translate to English             │
 │  • Voice → STT  • Image → ID OCR                     │
 │  • Intent detection (Gemini AI)                       │
@@ -51,12 +51,12 @@
 
 | Service | Role |
 |---------|------|
-| `aiService.js` | Gemini-powered intent detection & ID card OCR |
-| `translationService.js` | Gemini-powered language detection & translation (hi/bn/en) |
-| `voiceService.js` | FFmpeg audio conversion (OGG→WAV) + Gemini audio transcription |
-| `broadcastQueue.js` | Throttled message sending (2s delay) to avoid WhatsApp spam detection |
-| `logger.js` | Structured Pino logging with convenience helpers |
-| `mediaHandler.js` | Media download/save/upload utilities for Baileys |
+| `aiService.ts` | Gemini-powered intent detection & ID card OCR |
+| `translationService.ts` | Gemini-powered language detection & translation (hi/bn/en) |
+| `voiceService.ts` | FFmpeg audio conversion (OGG→WAV) + Gemini audio transcription |
+| `broadcastQueue.ts` | Throttled message sending (2s delay) to avoid WhatsApp spam detection |
+| `logger.ts` | Structured Pino logging with convenience helpers |
+| `mediaHandler.ts` | Media download/save/upload utilities for Baileys |
 
 ---
 
@@ -68,38 +68,39 @@ kaam-milega/
 ├── Readme.md                 ← Root readme (placeholder)
 │
 └── backend/
-    ├── server.js             ← Entry point: Express + Baileys startup
+    ├── server.ts             ← Entry point: Express + Baileys startup
     ├── package.json          ← Dependencies & scripts
+    ├── tsconfig.json         ← TypeScript configuration
     ├── nodemon.json          ← Dev watcher config
     ├── .env                  ← Environment variables (git-ignored)
     ├── .env.example          ← Template for env vars
-    ├── .gitignore            ← Ignores: node_modules, .env, auth_info, media_downloads, *.log
+    ├── .gitignore            ← Ignores: node_modules, .env, auth_info, media_downloads, *.log, dist/
     │
     ├── bot/                  ← WhatsApp bot core
-    │   ├── baileysClient.js  ← WhatsApp Web socket connection & messaging
-    │   └── messageHandler.js ← Central message router & processor
+    │   ├── baileysClient.ts  ← WhatsApp Web socket connection & messaging
+    │   └── messageHandler.ts ← Central message router & processor
     │
     ├── services/             ← Business logic layer
-    │   ├── aiService.js          ← Gemini intent detection & ID card OCR
-    │   ├── translationService.js ← Gemini language detect & translate
-    │   ├── voiceService.js       ← FFmpeg + Gemini voice transcription
-    │   ├── workerService.js      ← Worker registration multi-step flow
-    │   ├── jobService.js         ← Contractor job posting multi-step flow
-    │   ├── matchingService.js    ← Job↔Worker matching, notifications, acceptance
-    │   ├── stateService.js       ← Conversation state CRUD (multi-step flows)
-    │   └── broadcastQueue.js     ← Throttled WhatsApp message queue
+    │   ├── aiService.ts          ← Gemini intent detection & ID card OCR
+    │   ├── translationService.ts ← Gemini language detect & translate
+    │   ├── voiceService.ts       ← FFmpeg + Gemini voice transcription
+    │   ├── workerService.ts      ← Worker registration multi-step flow
+    │   ├── jobService.ts         ← Contractor job posting multi-step flow
+    │   ├── matchingService.ts    ← Job↔Worker matching, notifications, acceptance
+    │   ├── stateService.ts       ← Conversation state CRUD (multi-step flows)
+    │   └── broadcastQueue.ts     ← Throttled WhatsApp message queue
     │
     ├── prisma/               ← Database layer
     │   ├── schema.prisma     ← Data models: Worker, Job, Application, ConversationState
-    │   ├── prismaClient.js   ← Singleton Prisma client instance
-    │   └── seed.js           ← Demo data seeder (5 workers, 2 jobs)
+    │   ├── prismaClient.ts   ← Singleton Prisma client instance
+    │   └── seed.ts           ← Demo data seeder (5 workers, 2 jobs)
     │
     ├── routes/               ← HTTP API layer
-    │   └── webhookRoutes.js  ← REST endpoints for debugging/demo
+    │   └── webhookRoutes.ts  ← REST endpoints for debugging/demo
     │
     └── utils/                ← Shared utilities
-        ├── logger.js         ← Pino structured logger + helpers
-        └── mediaHandler.js   ← Media download, save, upload (Baileys v6 API)
+        ├── logger.ts         ← Pino structured logger + helpers
+        └── mediaHandler.ts   ← Media download, save, upload (Baileys v6 API)
 ```
 
 ---
@@ -208,28 +209,28 @@ Every incoming WhatsApp message follows this flow:
 
 All AI features use **Google Gemini API** (`gemini-2.0-flash` model). No other AI providers.
 
-### 1. Intent Detection (`aiService.js → detectIntent()`)
+### 1. Intent Detection (`aiService.ts → detectIntent()`)
 - **Input:** User message text (English)
 - **Output:** `{ intent, skill }` — JSON
 - **Intents:** `register`, `job_search`, `post_job`, `accept_job`, `greeting`, `unknown`
 - **Skill extraction:** e.g. `"painter"`, `"electrician"`, or `null`
 
-### 2. ID Card OCR (`aiService.js → parseIdCard()`)
+### 2. ID Card OCR (`aiService.ts → parseIdCard()`)
 - **Input:** Image file path (Aadhaar/PAN/Voter ID)
 - **Output:** `{ name, idNumber, rawText }` — JSON
 - Uses Gemini Vision (same `gemini-2.0-flash` model) with base64-encoded image
 
-### 3. Language Detection (`translationService.js → detectLanguage()`)
+### 3. Language Detection (`translationService.ts → detectLanguage()`)
 - **Input:** Any text (could be Hindi, Bengali, English, or Romanized)
 - **Output:** Language code: `"hi"`, `"bn"`, or `"en"`
 - Handles Romanized Hindi/Bengali (e.g. "mujhe kaam chahiye" → `"hi"`)
 
-### 4. Translation (`translationService.js`)
+### 4. Translation (`translationService.ts`)
 - `translateToEnglish(text, sourceLang)` — Any supported lang → English
 - `translateFromEnglish(text, targetLang)` — English → Hindi/Bengali
 - Keeps translations "simple, conversational, and easy to understand for daily-wage workers"
 
-### 5. Voice Transcription (`voiceService.js → processVoiceMessage()`)
+### 5. Voice Transcription (`voiceService.ts → processVoiceMessage()`)
 - **Pipeline:** OGG/Opus → FFmpeg → WAV (mono, 16kHz) → Gemini audio transcription
 - Supports Hindi, Bengali, and English audio
 - WAV file is cleaned up after transcription
@@ -238,7 +239,7 @@ All AI features use **Google Gemini API** (`gemini-2.0-flash` model). No other A
 
 ## 👷 Worker Registration Flow
 
-**Service:** `workerService.js`  
+**Service:** `workerService.ts`  
 **Steps saved in:** `ConversationState` table  
 **Trigger:** User sends "Hi", "Hello", "Register", or any greeting
 
@@ -260,7 +261,7 @@ Step 4: awaiting_id_image →
 
 ## 📝 Contractor Job Posting Flow
 
-**Service:** `jobService.js`  
+**Service:** `jobService.ts`  
 **Steps saved in:** `ConversationState` table  
 **Trigger:** User sends "Post job", "Hire workers", etc. (intent: `post_job`)
 
@@ -283,7 +284,7 @@ Step 5: awaiting_workers_needed  → Create job             → ✅ Complete
 
 ## 🔗 Job Matching & Acceptance
 
-**Service:** `matchingService.js`
+**Service:** `matchingService.ts`
 
 ### Matching Logic (`matchAndNotify()`)
 1. **Primary match:** Workers where `skill CONTAINS job.skillRequired` (case-insensitive) AND `location CONTAINS first part of job.location`
@@ -310,7 +311,7 @@ Step 5: awaiting_workers_needed  → Create job             → ✅ Complete
 
 ## 🌐 REST API Endpoints
 
-**Router:** `routes/webhookRoutes.js`  
+**Router:** `routes/webhookRoutes.ts`  
 **Base URL:** `http://localhost:3000`
 
 | Method | Endpoint | Description | Response |
@@ -326,7 +327,7 @@ Step 5: awaiting_workers_needed  → Create job             → ✅ Complete
 
 ## 📨 Broadcast Queue
 
-**Service:** `broadcastQueue.js`
+**Service:** `broadcastQueue.ts`
 
 - **Purpose:** Prevents WhatsApp spam detection/rate-limiting
 - **Mechanism:** In-memory FIFO queue, processes one message at a time
@@ -338,7 +339,7 @@ Step 5: awaiting_workers_needed  → Create job             → ✅ Complete
 
 ## 📱 Baileys WhatsApp Client
 
-**File:** `bot/baileysClient.js`
+**File:** `bot/baileysClient.ts`
 
 ### Connection Setup
 - Uses `makeWASocket` from `@whiskeysockets/baileys` v6
@@ -363,7 +364,7 @@ Step 5: awaiting_workers_needed  → Create job             → ✅ Complete
 
 ## 🗂️ Conversation State Management
 
-**Service:** `stateService.js`
+**Service:** `stateService.ts`
 
 - `getState(phoneNumber)` → returns `{ currentStep, contextData, role }` or `null`
 - `setState(phoneNumber, currentStep, contextData, role)` → upsert in DB
@@ -377,7 +378,7 @@ The `contextData` JSON stores partial form data being collected during multi-ste
 
 ## 📁 Media Handling
 
-**File:** `utils/mediaHandler.js`
+**File:** `utils/mediaHandler.ts`
 
 - **`downloadMedia(message, sock)`** — Downloads media from Baileys message using `downloadMediaMessage` with `reuploadRequest` support
 - **`saveMediaToFile(buffer, ext)`** — Saves to `backend/media_downloads/` with unique timestamped filename
@@ -390,7 +391,7 @@ The `contextData` JSON stores partial form data being collected during multi-ste
 
 ## 📊 Logging
 
-**File:** `utils/logger.js`
+**File:** `utils/logger.ts`
 
 - **Library:** Pino (structured JSON logging)
 - **Level:** `debug` when `DEBUG_MODE=true`, otherwise `info`
@@ -430,12 +431,18 @@ The `contextData` JSON stores partial form data being collected during multi-ste
 | `mime-types` | ^2.1.35 | MIME type detection |
 | `pino` | ^9.6.0 | Structured logging |
 | `qrcode-terminal` | ^0.12.0 | QR code display for WhatsApp auth |
+| `tsx` | ^4.19.2 | TypeScript execution for Node.js |
 
 ### Development
 | Package | Version | Purpose |
 |---------|---------|---------|
+| `@types/express` | ^5.0.0 | TypeScript types for Express |
+| `@types/fluent-ffmpeg` | ^2.1.27 | TypeScript types for fluent-ffmpeg |
+| `@types/mime-types` | ^2.1.4 | TypeScript types for mime-types |
+| `@types/node` | ^22.10.5 | TypeScript types for Node.js |
 | `nodemon` | ^3.1.9 | Auto-restart on file changes |
 | `prisma` | ^6.3.0 | Database migration & schema tool |
+| `typescript` | ^5.7.3 | TypeScript compiler |
 
 ### System Requirements
 - **Node.js** 18+
@@ -448,9 +455,10 @@ The `contextData` JSON stores partial form data being collected during multi-ste
 
 | Script | Command | Description |
 |--------|---------|-------------|
-| `npm start` | `node server.js` | Start in production mode |
-| `npm run dev` | `nodemon server.js` | Start with hot reload |
-| `npm run seed` | `node prisma/seed.js` | Seed demo data |
+| `npm start` | `node dist/server.js` | Start in production mode (from compiled JS) |
+| `npm run dev` | `nodemon` | Start with hot reload (tsx execution) |
+| `npm run build` | `tsc` | Compile TypeScript to JavaScript |
+| `npm run seed` | `tsx prisma/seed.ts` | Seed demo data |
 | `npm run prisma:generate` | `npx prisma generate` | Generate Prisma client |
 | `npm run prisma:migrate` | `npx prisma migrate dev --name init` | Run DB migrations |
 | `npm run prisma:validate` | `npx prisma validate` | Validate schema |
@@ -460,45 +468,45 @@ The `contextData` JSON stores partial form data being collected during multi-ste
 ## 🧩 Module Dependency Graph
 
 ```
-server.js
-├── utils/logger.js
-├── bot/baileysClient.js
+server.ts
+├── utils/logger.ts
+├── bot/baileysClient.ts
 │   ├── @whiskeysockets/baileys
 │   ├── @hapi/boom
 │   ├── qrcode-terminal
-│   └── utils/logger.js
-├── bot/messageHandler.js
-│   ├── bot/baileysClient.js (sendMessage)
-│   ├── services/workerService.js
-│   │   ├── prisma/prismaClient.js
-│   │   ├── services/stateService.js
-│   │   ├── services/translationService.js
-│   │   ├── services/aiService.js (parseIdCard)
-│   │   └── utils/mediaHandler.js
-│   ├── services/jobService.js
-│   │   ├── prisma/prismaClient.js
-│   │   ├── services/stateService.js
-│   │   └── services/matchingService.js
-│   ├── services/matchingService.js
-│   │   ├── prisma/prismaClient.js
-│   │   ├── services/broadcastQueue.js
-│   │   └── services/translationService.js
-│   ├── services/stateService.js
-│   │   └── prisma/prismaClient.js
-│   ├── services/translationService.js
+│   └── utils/logger.ts
+├── bot/messageHandler.ts
+│   ├── bot/baileysClient.ts (sendMessage)
+│   ├── services/workerService.ts
+│   │   ├── prisma/prismaClient.ts
+│   │   ├── services/stateService.ts
+│   │   ├── services/translationService.ts
+│   │   ├── services/aiService.ts (parseIdCard)
+│   │   └── utils/mediaHandler.ts
+│   ├── services/jobService.ts
+│   │   ├── prisma/prismaClient.ts
+│   │   ├── services/stateService.ts
+│   │   └── services/matchingService.ts
+│   ├── services/matchingService.ts
+│   │   ├── prisma/prismaClient.ts
+│   │   ├── services/broadcastQueue.ts
+│   │   └── services/translationService.ts
+│   ├── services/stateService.ts
+│   │   └── prisma/prismaClient.ts
+│   ├── services/translationService.ts
 │   │   └── @google/generative-ai
-│   ├── services/aiService.js
+│   ├── services/aiService.ts
 │   │   └── @google/generative-ai
-│   ├── services/voiceService.js
+│   ├── services/voiceService.ts
 │   │   ├── fluent-ffmpeg
 │   │   └── @google/generative-ai
-│   └── utils/mediaHandler.js
+│   └── utils/mediaHandler.ts
 │       └── @whiskeysockets/baileys
-├── services/broadcastQueue.js
-│   └── utils/logger.js
-└── routes/webhookRoutes.js
-    ├── prisma/prismaClient.js
-    └── utils/logger.js
+├── services/broadcastQueue.ts
+│   └── utils/logger.ts
+└── routes/webhookRoutes.ts
+    ├── prisma/prismaClient.ts
+    └── utils/logger.ts
 ```
 
 ---
@@ -518,7 +526,7 @@ server.js
 
 ## 🌱 Seed Data
 
-**File:** `prisma/seed.js`  
+**File:** `prisma/seed.ts`  
 **Run:** `npm run seed` or `POST /api/seed`
 
 ### Demo Workers (5)
@@ -541,12 +549,21 @@ server.js
 ## 🔧 Config Files
 
 ### `nodemon.json`
-- **Watches:** `bot/`, `services/`, `routes/`, `utils/`, `prisma/prismaClient.js`, `server.js`
-- **Ignores:** `auth_info/`, `media_downloads/`, `*.log`
-- **Extensions:** `.js`, `.json`
+- **Watches:** `bot/`, `services/`, `routes/`, `utils/`, `prisma/prismaClient.ts`, `server.ts`
+- **Ignores:** `auth_info/`, `media_downloads/`, `*.log`, `dist/`
+- **Extensions:** `.ts`, `.json`
+- **Exec:** `tsx` (TypeScript execution)
 
 ### `.gitignore`
-- `node_modules/`, `.env`, `auth_info/`, `media_downloads/`, `*.log`
+- `node_modules/`, `.env`, `auth_info/`, `media_downloads/`, `*.log`, `dist/`
+
+### `tsconfig.json`
+- **Target:** ES2020
+- **Module:** CommonJS
+- **Strict mode:** Enabled
+- **Output directory:** `dist/`
+- **Include:** All `.ts` files in project
+- **Exclude:** `node_modules/`, `dist/`
 
 ---
 
