@@ -10,6 +10,45 @@ import { processMessage } from '../services/claudeService';
 import { processVoiceMessage } from '../services/voiceService';
 import { downloadMedia, saveMediaToFile } from '../utils/mediaHandler';
 import logger from '../utils/logger';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+// ============================================
+// JID → Phone Number utility
+// ============================================
+// WhatsApp sends JIDs in two formats:
+//   - Classic: 91XXXXXXXXXX@s.whatsapp.net
+//   - LID:     XXXXXXXXXX@lid (newer linked device IDs)
+// We need to handle both and store the actual JID for sending replies/notifications.
+
+// In-memory map: phoneNumber → actual JID (for notifications)
+const jidMap = new Map<string, string>();
+
+function cleanPhoneFromJid(jid: string): string {
+    // Remove @s.whatsapp.net or @lid suffix
+    let phone = jid.replace(/@s\.whatsapp\.net$/i, '').replace(/@lid$/i, '');
+
+    // If it doesn't start with country code, prepend 91 (India)
+    if (phone.length === 10 && /^\d{10}$/.test(phone)) {
+        phone = '91' + phone;
+    }
+
+    return phone;
+}
+
+/**
+ * Get the actual JID for a phone number (for sending notifications).
+ * First checks our in-memory map, then falls back to standard format.
+ */
+export function getJidForPhone(phoneNumber: string): string {
+    // Check if we have a stored JID for this phone
+    const stored = jidMap.get(phoneNumber);
+    if (stored) return stored;
+
+    // Fallback: try standard @s.whatsapp.net format
+    return `${phoneNumber}@s.whatsapp.net`;
+}
 
 /**
  * Main message handler — processes all incoming WhatsApp messages.
@@ -17,7 +56,10 @@ import logger from '../utils/logger';
  */
 async function handleMessage(sock: WASocket, message: any): Promise<void> {
     const jid: string = message.key.remoteJid;
-    const cleanPhone = jid.replace('@s.whatsapp.net', '');
+    const cleanPhone = cleanPhoneFromJid(jid);
+
+    // Store the JID mapping so we can send notifications later
+    jidMap.set(cleanPhone, jid);
 
     try {
         // ----- Determine message type -----

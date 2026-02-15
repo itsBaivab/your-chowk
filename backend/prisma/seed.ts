@@ -14,6 +14,7 @@ interface DemoWorker {
     preferredLanguage: string;
     role: string;
     isOnboarded: boolean;
+    aadhaarNumber: string;
 }
 
 interface DemoJob {
@@ -23,7 +24,10 @@ interface DemoJob {
     wage: string;
     city: string;
     location: string;
+    meetingPoint: string;
     workersNeeded: number;
+    startDate: Date;
+    endDate: Date;
     status: string;
 }
 
@@ -36,6 +40,7 @@ const DEMO_WORKERS: DemoWorker[] = [
         preferredLanguage: 'hi',
         role: 'worker',
         isOnboarded: true,
+        aadhaarNumber: '234567891234',
     },
     {
         phoneNumber: '919876543211',
@@ -45,6 +50,7 @@ const DEMO_WORKERS: DemoWorker[] = [
         preferredLanguage: 'bn',
         role: 'worker',
         isOnboarded: true,
+        aadhaarNumber: '345678912345',
     },
     {
         phoneNumber: '919876543212',
@@ -54,6 +60,7 @@ const DEMO_WORKERS: DemoWorker[] = [
         preferredLanguage: 'hi',
         role: 'worker',
         isOnboarded: true,
+        aadhaarNumber: '456789123456',
     },
     {
         phoneNumber: '919876543213',
@@ -63,6 +70,7 @@ const DEMO_WORKERS: DemoWorker[] = [
         preferredLanguage: 'hi',
         role: 'worker',
         isOnboarded: true,
+        aadhaarNumber: '567891234567',
     },
     {
         phoneNumber: '919876543214',
@@ -72,6 +80,7 @@ const DEMO_WORKERS: DemoWorker[] = [
         preferredLanguage: 'bn',
         role: 'worker',
         isOnboarded: true,
+        aadhaarNumber: '678912345678',
     },
 ];
 
@@ -83,7 +92,10 @@ const DEMO_JOBS: DemoJob[] = [
         wage: '₹700/day',
         city: 'Mumbai',
         location: 'Andheri West, Mumbai',
+        meetingPoint: 'Andheri Metro Station Gate 2',
         workersNeeded: 2,
+        startDate: new Date('2026-02-20'),
+        endDate: new Date('2026-02-25'),
         status: 'OPEN',
     },
     {
@@ -93,7 +105,10 @@ const DEMO_JOBS: DemoJob[] = [
         wage: '₹800/day',
         city: 'Kolkata',
         location: 'Salt Lake, Kolkata',
+        meetingPoint: 'Salt Lake Sector V Bus Stop',
         workersNeeded: 1,
+        startDate: new Date('2026-02-22'),
+        endDate: new Date('2026-03-05'),
         status: 'OPEN',
     },
 ];
@@ -120,6 +135,9 @@ async function seed(): Promise<void> {
                 phoneNumber: job.contractorPhone,
                 name: 'Demo Contractor',
                 role: 'contractor',
+                aadhaarNumber: '123456789012',
+                panNumber: 'ABCDE1234F',
+                isOnboarded: true,
             },
         });
     }

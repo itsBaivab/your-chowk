@@ -109,7 +109,7 @@ router.get('/api/dashboard/stats', async (_req: Request, res: Response) => {
             prisma.job.count({ where: { status: 'OPEN' } }),
             prisma.job.count({ where: { status: 'FILLED' } }),
             prisma.application.count(),
-            prisma.application.count({ where: { status: 'ACCEPTED' } }),
+            prisma.application.count({ where: { status: { in: ['WORKER_ACCEPTED', 'CONTRACTOR_CONFIRMED', 'COMPLETED'] } } }),
             prisma.application.count({ where: { attendanceStatus: 'PRESENT' } }),
         ]);
 

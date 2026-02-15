@@ -11,8 +11,11 @@ interface User {
   skill: string | null;
   city: string | null;
   preferredLanguage: string;
+  aadhaarNumber: string | null;
+  panNumber: string | null;
   role: string;
   isOnboarded: boolean;
+  availableFrom: string | null;
   createdAt: string;
 }
 
@@ -74,6 +77,7 @@ export default function UsersPage() {
                 <th>Role</th>
                 <th>City</th>
                 <th>Skill</th>
+                <th>Aadhaar</th>
                 <th>Language</th>
                 <th>Status</th>
                 <th>Joined</th>
@@ -87,6 +91,7 @@ export default function UsersPage() {
                   <td><span className={`badge badge-${u.role}`}>{u.role}</span></td>
                   <td>{u.city || "—"}</td>
                   <td>{u.skill || "—"}</td>
+                  <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>{u.aadhaarNumber ? `${u.aadhaarNumber.slice(0, 4)}...${u.aadhaarNumber.slice(-4)}` : "—"}</td>
                   <td>{langMap[u.preferredLanguage] || u.preferredLanguage}</td>
                   <td>
                     <span className={`badge ${u.isOnboarded ? "badge-present" : "badge-pending"}`}>
@@ -99,7 +104,7 @@ export default function UsersPage() {
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={8} style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>No users found</td></tr>
+                <tr><td colSpan={9} style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>No users found</td></tr>
               )}
             </tbody>
           </table>

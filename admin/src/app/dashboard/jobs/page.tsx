@@ -12,8 +12,10 @@ interface Job {
   wage: string;
   city: string;
   location: string | null;
+  meetingPoint: string | null;
   workersNeeded: number;
-  durationDays: number | null;
+  startDate: string;
+  endDate: string;
   insuranceProvided: boolean;
   status: string;
   createdAt: string;
@@ -90,8 +92,8 @@ export default function JobsPage() {
                   <td>{j.skillRequired}</td>
                   <td>{j.city}{j.location ? `, ${j.location}` : ""}</td>
                   <td style={{ fontWeight: 600, color: "var(--success)" }}>{j.wage}</td>
-                  <td>{j.applications.filter((a) => a.status === "ACCEPTED").length}/{j.workersNeeded}</td>
-                  <td>{j.durationDays ? `${j.durationDays}d` : "—"}</td>
+                  <td>{j.applications.filter((a) => ["WORKER_ACCEPTED", "CONTRACTOR_CONFIRMED", "COMPLETED"].includes(a.status)).length}/{j.workersNeeded}</td>
+                  <td style={{ fontSize: "0.85rem" }}>{new Date(j.startDate).toLocaleDateString("en-IN")} - {new Date(j.endDate).toLocaleDateString("en-IN")}</td>
                   <td>{j.insuranceProvided ? "✅" : "❌"}</td>
                   <td><span className={`badge badge-${j.status.toLowerCase()}`}>{j.status}</span></td>
                   <td>{j.applications.length}</td>

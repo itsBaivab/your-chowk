@@ -18,8 +18,10 @@ async function createJob(data: {
     wage: string;
     city: string;
     location?: string;
+    meetingPoint?: string;
     workersNeeded?: number;
-    durationDays?: number;
+    startDate: Date;
+    endDate: Date;
     insuranceProvided?: boolean;
 }): Promise<Job | null> {
     try {

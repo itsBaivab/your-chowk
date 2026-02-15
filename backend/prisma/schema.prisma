@@ -1,8 +1,8 @@
 // ============================================
 // Your Chawk — Prisma Schema
 // ============================================
-// Database: Supabase PostgreSQL
-// Run: npx prisma migrate dev --name init
+// Database: Neon PostgreSQL
+// Run: npx prisma db push
 // Then: npx prisma generate
 
 generator client {
@@ -18,17 +18,19 @@ datasource db {
 // Worker — Workers and Contractors
 // -------------------------------------------
 model Worker {
-  id                String   @id @default(uuid())
-  phoneNumber       String   @unique
+  id                String    @id @default(uuid())
+  phoneNumber       String    @unique
   name              String?
   skill             String?
   city              String?
-  preferredLanguage String   @default("en") // "en", "hi", "kn", "bn"
-  idImageUrl        String?
-  role              String   @default("worker") // "worker" or "contractor"
-  isOnboarded       Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  preferredLanguage String    @default("en") // "en", "hi", "kn", "bn"
+  aadhaarNumber     String? // 12-digit Aadhaar card number
+  panNumber         String? // PAN card number (contractors)
+  role              String    @default("worker") // "worker" or "contractor"
+  isOnboarded       Boolean   @default(false)
+  availableFrom     DateTime? // null = available now, date = busy until this date
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   applications Application[]
 
@@ -45,9 +47,11 @@ model Job {
   skillRequired     String
   wage              String
   city              String
-  location          String?  // specific area within city
+  location          String? // specific area within city
+  meetingPoint      String? // where workers should meet on day 1
   workersNeeded     Int      @default(1)
-  durationDays      Int?
+  startDate         DateTime
+  endDate           DateTime
   insuranceProvided Boolean  @default(false)
   status            String   @default("OPEN") // "OPEN", "FILLED", "CANCELLED"
   createdAt         DateTime @default(now())
@@ -58,13 +62,17 @@ model Job {
 }
 
 // -------------------------------------------
-// Application — Worker applying to / accepting a job
+// Application — Worker-Job lifecycle
 // -------------------------------------------
+// Status flow:
+//   NOTIFIED → WORKER_ACCEPTED → CONTRACTOR_CONFIRMED → COMPLETED
+//   Any state before CONTRACTOR_CONFIRMED → CANCELLED
 model Application {
   id                 String    @id @default(uuid())
   jobId              String
   workerPhone        String
-  status             String    @default("PENDING") // "PENDING", "ACCEPTED", "REJECTED"
+  status             String    @default("NOTIFIED") // NOTIFIED, WORKER_ACCEPTED, CONTRACTOR_CONFIRMED, CANCELLED, COMPLETED
+  cancelledBy        String? // "worker" or "contractor" (when status=CANCELLED)
   otp                String?
   otpExpiresAt       DateTime?
   attendanceStatus   String    @default("NOT_MARKED") // "NOT_MARKED", "PRESENT", "ABSENT"
@@ -84,23 +92,10 @@ model Application {
 model ConversationHistory {
   id          String   @id @default(uuid())
   phoneNumber String
-  role        String   // "user" or "assistant"
+  role        String // "user" or "assistant"
   content     String
   createdAt   DateTime @default(now())
 
   @@index([phoneNumber, createdAt])
   @@map("conversation_history")
-}
-
-// -------------------------------------------
-// ConversationState — Tracks multi-step flows (legacy, kept for backward compat)
-// -------------------------------------------
-model ConversationState {
-  phoneNumber String   @id @unique
-  currentStep String // e.g. "awaiting_name", "awaiting_skill"
-  contextData Json     @default("{}") // stores partial form data
-  role        String   @default("worker") // "worker" or "contractor"
-  updatedAt   DateTime @updatedAt
-
-  @@map("conversation_states")
 }
