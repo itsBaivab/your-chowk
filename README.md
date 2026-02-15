@@ -162,7 +162,7 @@ DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432
 ANTHROPIC_API_KEY="your-anthropic-api-key"
 PORT=3000
 DEBUG_MODE="false"
-ADMIN_EMAIL="admin@yourchawk.com"
+ADMIN_EMAIL="admin@yourchowk.com"
 ADMIN_PASSWORD="admin123"
 ```
 
@@ -254,7 +254,7 @@ Open [http://localhost:3001](http://localhost:3001) in your browser.
 Access the dashboard at `http://localhost:3001/dashboard`
 
 **Default credentials:**
-- Email: `admin@yourchawk.com`
+- Email: `admin@yourchowk.com`
 - Password: `admin123`
 
 **Features:**

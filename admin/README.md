@@ -65,7 +65,7 @@ npm run dev
 Open [http://localhost:3001](http://localhost:3001) with your browser.
 
 **Default login credentials:**
-- Email: `admin@yourchawk.com`
+- Email: `admin@yourchowk.com`
 - Password: `admin123`
 
 ⚠️ **Important:** Change these credentials in production via backend environment variables.
@@ -167,7 +167,7 @@ This is a standard Next.js app and can be deployed to:
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server (port 3000) |
+| `npm run dev` | Start development server (default port 3000, configure via PORT env var) |
 | `npm run build` | Build production bundle |
 | `npm start` | Start production server |
 | `npm run lint` | Run ESLint |
