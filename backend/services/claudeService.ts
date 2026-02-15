@@ -399,7 +399,7 @@ const tools = [
                 return JSON.stringify({
                     success: true,
                     message: 'Attendance marked as PRESENT',
-                    jobTitle: application.job.title || application.job.skillRequired,
+                    jobTitle: application.job?.title || application.job?.skillRequired || 'Unknown Job',
                 });
             } catch (error) {
                 logger.serviceError('tool:verify_otp', error as Error);
@@ -488,8 +488,8 @@ async function processMessage(phoneNumber: string, messageText: string): Promise
                 { role: 'user' as const, content: messageText },
             ];
 
-        // Call Claude with toolRunner
-        const result = await client.beta.messages.toolRunner({
+        // Call Claude with toolRunner — directly awaitable, resolves to BetaMessage
+        const finalMessage = await client.beta.messages.toolRunner({
             model: 'claude-sonnet-4-20250514',
             max_tokens: 1024,
             system: SYSTEM_PROMPT,
@@ -498,7 +498,6 @@ async function processMessage(phoneNumber: string, messageText: string): Promise
         });
 
         // Extract text response from the final message
-        const finalMessage = result.finalMessage;
         let responseText = '';
 
         for (const block of finalMessage.content) {

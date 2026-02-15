@@ -10,9 +10,10 @@ interface DemoWorker {
     phoneNumber: string;
     name: string;
     skill: string;
-    location: string;
+    city: string;
     preferredLanguage: string;
     role: string;
+    isOnboarded: boolean;
 }
 
 interface DemoJob {
@@ -20,6 +21,7 @@ interface DemoJob {
     title: string;
     skillRequired: string;
     wage: string;
+    city: string;
     location: string;
     workersNeeded: number;
     status: string;
@@ -30,41 +32,46 @@ const DEMO_WORKERS: DemoWorker[] = [
         phoneNumber: '919876543210',
         name: 'Rajesh Kumar',
         skill: 'painter',
-        location: 'Andheri, Mumbai',
+        city: 'Mumbai',
         preferredLanguage: 'hi',
         role: 'worker',
+        isOnboarded: true,
     },
     {
         phoneNumber: '919876543211',
         name: 'Amit Das',
         skill: 'electrician',
-        location: 'Salt Lake, Kolkata',
+        city: 'Kolkata',
         preferredLanguage: 'bn',
         role: 'worker',
+        isOnboarded: true,
     },
     {
         phoneNumber: '919876543212',
         name: 'Suresh Yadav',
         skill: 'plumber',
-        location: 'Sector 62, Noida',
+        city: 'Noida',
         preferredLanguage: 'hi',
         role: 'worker',
+        isOnboarded: true,
     },
     {
         phoneNumber: '919876543213',
         name: 'Manoj Singh',
         skill: 'carpenter',
-        location: 'Lajpat Nagar, Delhi',
+        city: 'Delhi',
         preferredLanguage: 'hi',
         role: 'worker',
+        isOnboarded: true,
     },
     {
         phoneNumber: '919876543214',
         name: 'Bikram Roy',
         skill: 'mason',
-        location: 'Howrah, Kolkata',
+        city: 'Kolkata',
         preferredLanguage: 'bn',
         role: 'worker',
+        isOnboarded: true,
     },
 ];
 
@@ -74,6 +81,7 @@ const DEMO_JOBS: DemoJob[] = [
         title: 'House Painting — 3BHK Flat',
         skillRequired: 'painter',
         wage: '₹700/day',
+        city: 'Mumbai',
         location: 'Andheri West, Mumbai',
         workersNeeded: 2,
         status: 'OPEN',
@@ -83,6 +91,7 @@ const DEMO_JOBS: DemoJob[] = [
         title: 'Electrical Wiring — New Office',
         skillRequired: 'electrician',
         wage: '₹800/day',
+        city: 'Kolkata',
         location: 'Salt Lake, Kolkata',
         workersNeeded: 1,
         status: 'OPEN',
