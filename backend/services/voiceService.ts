@@ -2,15 +2,16 @@
 // Voice Service — Audio conversion & STT
 // ============================================
 // Converts WhatsApp voice messages (OGG/Opus) to WAV
-// Then transcribes using Gemini API
+// Then transcribes using Anthropic Claude API
 
 import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
 import path from 'path';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Anthropic from '@anthropic-ai/sdk';
 import logger from '../utils/logger';
 
 const MEDIA_DIR = path.join(__dirname, '..', 'media_downloads');
+const client = new Anthropic();
 
 // -----------------------------------------------
 // Audio Conversion (OGG/Opus → WAV)
@@ -26,8 +27,8 @@ function convertAudio(inputPath: string): Promise<string> {
 
         ffmpeg(inputPath)
             .toFormat('wav')
-            .audioChannels(1)        // Mono
-            .audioFrequency(16000)   // 16kHz for speech recognition
+            .audioChannels(1)
+            .audioFrequency(16000)
             .on('end', () => {
                 logger.debug({ event: 'audio_converted', input: inputPath, output: outputPath });
                 resolve(outputPath);
@@ -41,45 +42,53 @@ function convertAudio(inputPath: string): Promise<string> {
 }
 
 // -----------------------------------------------
-// Speech-to-Text (Gemini API)
+// Speech-to-Text (Anthropic Claude)
 // -----------------------------------------------
 
 /**
- * Transcribe a WAV audio file using Gemini API.
- * Gemini supports audio input natively for transcription.
+ * Transcribe a WAV audio file using Claude.
+ * Claude supports audio input via base64 encoding.
  */
 async function transcribeAudio(wavPath: string): Promise<string> {
     try {
-        const apiKey = process.env.GEMINI_API_KEY;
-
-        if (!apiKey) {
-            logger.warn({ event: 'gemini_no_api_key' });
-            return '[Voice message received — Gemini API key not configured]';
-        }
-
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
         // Read audio file and convert to base64
         const audioBuffer = fs.readFileSync(wavPath);
         const base64Audio = audioBuffer.toString('base64');
 
-        const prompt = `Transcribe the following audio. The audio may be in Hindi, Bengali, or English.
+        const message = await client.messages.create({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 500,
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Transcribe the following audio. The audio may be in Hindi, Bengali, Kannada, or English.
 Return ONLY the transcribed text, nothing else. No labels, no explanations.
-If you cannot understand the audio, return "[inaudible]".`;
+If you cannot understand the audio, return "[inaudible]".`,
+                        },
+                        {
+                            type: 'image', // Audio is passed as base64 inline data
+                            source: {
+                                type: 'base64',
+                                media_type: 'audio/wav',
+                                data: base64Audio,
+                            },
+                        } as any,
+                    ],
+                },
+            ],
+        });
 
-        const audioPart = {
-            inlineData: {
-                data: base64Audio,
-                mimeType: 'audio/wav',
-            },
-        };
-
-        const result = await model.generateContent([prompt, audioPart]);
-        const text = result.response.text().trim();
+        const text = message.content
+            .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+            .map((block) => block.text)
+            .join('')
+            .trim();
 
         logger.info({ event: 'audio_transcribed', textLength: text.length, preview: text.substring(0, 50) });
-        return text;
+        return text || '[inaudible]';
     } catch (error) {
         logger.serviceError('voiceService.transcribeAudio', error as Error);
         return '[Could not transcribe voice message]';
@@ -87,7 +96,7 @@ If you cannot understand the audio, return "[inaudible]".`;
 }
 
 // -----------------------------------------------
-// Full Pipeline: Download → Convert → Transcribe
+// Full Pipeline: Convert → Transcribe
 // -----------------------------------------------
 
 /**

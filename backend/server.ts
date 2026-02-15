@@ -5,6 +5,7 @@
 import 'dotenv/config';
 
 import express from 'express';
+import cors from 'cors';
 import logger from './utils/logger';
 import { connectToWhatsApp, sendMessage } from './bot/baileysClient';
 import { handleMessage } from './bot/messageHandler';
@@ -15,6 +16,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ----- Middleware -----
+app.use(cors()); // Allow admin dashboard cross-origin requests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -26,10 +28,11 @@ async function startServer(): Promise<void> {
     // Start Express
     app.listen(PORT, () => {
         logger.info({ event: 'server_started', port: PORT });
-        console.log(`\n🚀 Kaam Milega Backend running on http://localhost:${PORT}`);
-        console.log(`   Health check: http://localhost:${PORT}/health`);
-        console.log(`   Workers API:  http://localhost:${PORT}/api/workers`);
-        console.log(`   Jobs API:     http://localhost:${PORT}/api/jobs\n`);
+        console.log(`\n🏗️  Your Chawk Backend running on http://localhost:${PORT}`);
+        console.log(`   Health check:  http://localhost:${PORT}/health`);
+        console.log(`   Workers API:   http://localhost:${PORT}/api/workers`);
+        console.log(`   Jobs API:      http://localhost:${PORT}/api/jobs`);
+        console.log(`   Dashboard API: http://localhost:${PORT}/api/dashboard/stats\n`);
     });
 
     // Initialize broadcast queue with sendMessage function
@@ -50,7 +53,7 @@ async function startServer(): Promise<void> {
 // ----- Graceful Shutdown -----
 process.on('SIGINT', async () => {
     logger.info({ event: 'shutting_down' });
-    console.log('\n👋 Shutting down Kaam Milega...');
+    console.log('\n👋 Shutting down Your Chawk...');
     process.exit(0);
 });
 

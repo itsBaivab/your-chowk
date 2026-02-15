@@ -1,194 +1,88 @@
 // ============================================
-// Worker Service — Registration Flow
+// Worker Service — Database operations for workers
 // ============================================
-// Handles step-by-step worker registration via WhatsApp
-// Steps: greeting → awaiting_name → awaiting_skill → awaiting_location → awaiting_id_image → registered
+// Pure DB operations — conversational flows handled by Claude AI
 
-import { ConversationState } from '@prisma/client';
-import prisma from '../prisma/prismaClient';
-import * as stateService from './stateService';
-import * as translationService from './translationService';
-import { parseIdCard } from './aiService';
-import { downloadMedia, saveMediaToFile, uploadToStorage, getExtensionFromMime } from '../utils/mediaHandler';
+import { PrismaClient, Worker } from '@prisma/client';
 import logger from '../utils/logger';
 
-import type makeWASocket from '@whiskeysockets/baileys';
-type WASocket = ReturnType<typeof makeWASocket>;
-
-// Common skills for validation/suggestion
-const COMMON_SKILLS: string[] = [
-    'painter', 'electrician', 'plumber', 'carpenter', 'mason',
-    'welder', 'driver', 'cleaner', 'helper', 'labourer',
-    'cook', 'security guard', 'gardener',
-];
+const prisma = new PrismaClient();
 
 /**
- * Handle a worker registration message based on current state.
+ * Find a worker by phone number.
  */
-async function handleRegistration(
-    sock: WASocket,
-    phoneNumber: string,
-    text: string,
-    state: ConversationState | null,
-    detectedLang: string
-): Promise<string> {
-    const currentStep = state?.currentStep || 'start';
-    const context = ((state?.contextData as Record<string, any>) || {}) as Record<string, any>;
-
-    switch (currentStep) {
-        // ----- Step 0: Start registration -----
-        case 'start': {
-            // Store the detected language
-            context.preferredLanguage = detectedLang;
-
-            await stateService.setState(phoneNumber, 'awaiting_name', context, 'worker');
-            return '👋 Welcome to Kaam Milega!\n\nI help daily-wage workers find jobs near them.\n\nLet\'s get you registered. What is your name?';
-        }
-
-        // ----- Step 1: Collect name -----
-        case 'awaiting_name': {
-            const name = text.trim();
-            if (name.length < 2) {
-                return 'Please enter a valid name (at least 2 characters).';
-            }
-
-            context.name = name;
-            await stateService.setState(phoneNumber, 'awaiting_skill', context, 'worker');
-
-            const skillList = COMMON_SKILLS.slice(0, 8).join(', ');
-            return `Nice to meet you, ${name}! 🙏\n\nWhat is your primary skill?\nExamples: ${skillList}\n\nYou can type your skill or choose from the list above.`;
-        }
-
-        // ----- Step 2: Collect skill -----
-        case 'awaiting_skill': {
-            const skill = text.trim().toLowerCase();
-            if (skill.length < 2) {
-                return 'Please enter a valid skill (e.g., painter, electrician, plumber).';
-            }
-
-            context.skill = skill;
-            await stateService.setState(phoneNumber, 'awaiting_location', context, 'worker');
-            return '📍 What is your work location or area?\n\nType the area/city name (e.g., "Andheri, Mumbai" or "Sector 62, Noida").';
-        }
-
-        // ----- Step 3: Collect location -----
-        case 'awaiting_location': {
-            const location = text.trim();
-            if (location.length < 2) {
-                return 'Please enter a valid location (e.g., "Sector 62, Noida").';
-            }
-
-            context.location = location;
-            await stateService.setState(phoneNumber, 'awaiting_id_image', context, 'worker');
-            return '📸 (Optional) Send a photo of your ID card (Aadhaar/PAN/Voter ID).\n\nThis helps contractors verify your identity.\n\nType "skip" to skip this step.';
-        }
-
-        // ----- Step 4: Collect ID image (optional) -----
-        case 'awaiting_id_image': {
-            // Check if user wants to skip
-            const lowerText = text.toLowerCase().trim();
-            if (lowerText === 'skip' || lowerText === 'no') {
-                return await completeRegistration(phoneNumber, context, detectedLang);
-            }
-
-            // If text received instead of image, prompt again
-            return '📸 Please send a photo of your ID card, or type "skip" to skip.';
-        }
-
-        default: {
-            return 'Something went wrong. Type "hi" to start over.';
-        }
-    }
-}
-
-/**
- * Handle an image upload during registration (ID card).
- */
-async function handleIdImageUpload(
-    sock: WASocket,
-    phoneNumber: string,
-    message: any,
-    state: ConversationState,
-    detectedLang: string
-): Promise<string> {
-    if (state?.currentStep !== 'awaiting_id_image') {
-        return 'I received an image, but I\'m not expecting one right now. Type "hi" to start registration.';
-    }
-
+async function findWorker(phoneNumber: string): Promise<Worker | null> {
     try {
-        const context = ((state.contextData as Record<string, any>) || {}) as Record<string, any>;
-
-        // Download and save the image
-        const buffer = await downloadMedia(message, sock);
-        const mimetype: string = message.message?.imageMessage?.mimetype || 'image/jpeg';
-        const ext = getExtensionFromMime(mimetype);
-        const filePath = saveMediaToFile(buffer, ext);
-        const imageUrl = await uploadToStorage(filePath);
-
-        context.idImageUrl = imageUrl;
-
-        // Try to parse the ID card using Gemini Vision
-        const idData = await parseIdCard(filePath);
-        if (idData.name && !context.name) {
-            context.name = idData.name;
-        }
-
-        logger.info({ event: 'id_card_uploaded', phoneNumber, parsedName: idData.name, hasId: !!idData.idNumber });
-
-        return await completeRegistration(phoneNumber, context, detectedLang);
+        return await prisma.worker.findUnique({
+            where: { phoneNumber },
+        });
     } catch (error) {
-        logger.serviceError('workerService.handleIdImageUpload', error as Error);
-        return 'Failed to process your ID image. You can try again or type "skip" to continue without it.';
+        logger.serviceError('workerService.findWorker', error as Error);
+        return null;
     }
 }
 
 /**
- * Complete the worker registration — save to database.
+ * Create or update a worker.
  */
-async function completeRegistration(
-    phoneNumber: string,
-    context: Record<string, any>,
-    detectedLang: string
-): Promise<string> {
+async function upsertWorker(data: {
+    phoneNumber: string;
+    role: string;
+    name?: string;
+    city?: string;
+    skill?: string;
+    preferredLanguage?: string;
+    isOnboarded?: boolean;
+}): Promise<Worker | null> {
     try {
-        // Clean phone number (remove @s.whatsapp.net)
-        const cleanPhone = phoneNumber.replace('@s.whatsapp.net', '');
-
-        // Upsert worker in database
-        await prisma.worker.upsert({
-            where: { phoneNumber: cleanPhone },
+        return await prisma.worker.upsert({
+            where: { phoneNumber: data.phoneNumber },
             update: {
-                name: context.name,
-                skill: context.skill,
-                location: context.location,
-                preferredLanguage: context.preferredLanguage || detectedLang || 'en',
-                idImageUrl: context.idImageUrl || null,
+                ...(data.name && { name: data.name }),
+                ...(data.city && { city: data.city }),
+                ...(data.skill && { skill: data.skill }),
+                ...(data.preferredLanguage && { preferredLanguage: data.preferredLanguage }),
+                ...(data.role && { role: data.role }),
+                ...(data.isOnboarded !== undefined && { isOnboarded: data.isOnboarded }),
             },
             create: {
-                phoneNumber: cleanPhone,
-                name: context.name,
-                skill: context.skill,
-                location: context.location,
-                preferredLanguage: context.preferredLanguage || detectedLang || 'en',
-                idImageUrl: context.idImageUrl || null,
-                role: 'worker',
+                phoneNumber: data.phoneNumber,
+                role: data.role,
+                name: data.name,
+                city: data.city,
+                skill: data.skill,
+                preferredLanguage: data.preferredLanguage || 'en',
+                isOnboarded: data.isOnboarded || false,
             },
         });
-
-        // Clear conversation state
-        await stateService.clearState(phoneNumber);
-
-        logger.info({ event: 'worker_registered', phoneNumber: cleanPhone, name: context.name, skill: context.skill });
-
-        return `✅ Registration complete!\n\n📋 Your Details:\n• Name: ${context.name}\n• Skill: ${context.skill}\n• Location: ${context.location}\n• ID: ${context.idImageUrl ? 'Uploaded ✓' : 'Not provided'}\n\nYou will receive job notifications matching your skill and location. 🔔`;
     } catch (error) {
-        logger.serviceError('workerService.completeRegistration', error as Error);
-        return 'Sorry, there was an error saving your registration. Please try again by typing "hi".';
+        logger.serviceError('workerService.upsertWorker', error as Error);
+        return null;
+    }
+}
+
+/**
+ * Get all workers with optional filters.
+ */
+async function getWorkers(filters?: { role?: string; city?: string; skill?: string }): Promise<Worker[]> {
+    try {
+        const where: any = {};
+        if (filters?.role) where.role = filters.role;
+        if (filters?.city) where.city = { contains: filters.city, mode: 'insensitive' };
+        if (filters?.skill) where.skill = { contains: filters.skill, mode: 'insensitive' };
+
+        return await prisma.worker.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+        });
+    } catch (error) {
+        logger.serviceError('workerService.getWorkers', error as Error);
+        return [];
     }
 }
 
 export {
-    handleRegistration,
-    handleIdImageUpload,
-    completeRegistration,
+    findWorker,
+    upsertWorker,
+    getWorkers,
 };
