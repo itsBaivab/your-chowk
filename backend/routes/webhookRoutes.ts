@@ -80,7 +80,7 @@ router.get('/api/queue', (_req: Request, res: Response) => {
 // ----- Admin Login -----
 router.post('/api/auth/login', (req: Request, res: Response) => {
     const { email, password } = req.body;
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@yourchawk.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@yourchowk.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
     if (email === adminEmail && password === adminPassword) {
