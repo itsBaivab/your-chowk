@@ -1,0 +1,18 @@
+{
+  "exec": "tsx server.ts",
+  "ignore": [
+    "auth_info/",
+    "media_downloads/",
+    "dist/",
+    "*.log"
+  ],
+  "watch": [
+    "bot/",
+    "services/",
+    "routes/",
+    "utils/",
+    "prisma/prismaClient.ts",
+    "server.ts"
+  ],
+  "ext": "ts,json"
+}
